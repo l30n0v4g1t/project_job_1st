@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, exceptions
+from fastapi.responses import JSONResponse
 from uvicorn import run
 from models import models
 from uuid import uuid1, UUID
@@ -9,9 +10,21 @@ profiles = {}
 
 app = FastAPI(title="Jobs, not Steve")
 
+@app.exception_handler(HTTPException)
+def handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"message": exc.detail},
+    )
+
 @app.get("/")
 def root():
-    return {"key" : "value"}
+    try:
+        return JSONResponse(status_code=200, content={"message" : "Everything is fine"})
+    except HTTPException as httpexc:
+        raise httpexc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 #POST
