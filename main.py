@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from uvicorn import run
 from models import models
+from uuid import uuid1, UUID
 from extentions.year_age import check_age
 
 profiles = {}
@@ -16,22 +17,16 @@ def root():
 #POST
 @app.post("/profile")
 def create_profile(profile: models.Profile):
-    if profile.login is None or profile.password is None \
-        or profile.name is None or profile.surname is None \
-            or profile.patronym is None or profile.birthday is None \
-                or profile.email is None or profile.experience is None:
-        raise HTTPException(status_code=400, detail=f"Not enough information")
     if profile.id is None:
-        profile.id = len(profiles.keys()) + 1
-    profile.age = check_age(profile.birthday)
+        profile.id = uuid1()
     profiles[profile.id] = profile
-    return profile
+    return profiles[profile.id], check_age(profile.birthday)
 
 
 #GET
 @app.get("/profile/{id}", response_model=models.Profile)
-def get_profile(id: int) -> models.Profile:
-    if id <= len(profiles.keys()):
+def get_profile(id: UUID) -> models.Profile:
+    if id in profiles.keys():
         return profiles[id]
     else:
         raise HTTPException(status_code=404, detail=f"User {id} not found")
@@ -39,55 +34,39 @@ def get_profile(id: int) -> models.Profile:
 
 #PATCH
 @app.patch("/profile/{id}", response_model=models.Profile)
-def update_profile(id: int, profile: models.Profile):
-    if id <= len(profiles.keys()) and profile.id is not None:
-        print(profiles)
-        if profile.login is not None:
-            profiles[id].login = profile.login
-        if profile.password is not None:
-            profiles[id].password = profile.password
-        if profile.name is not None:
-            profiles[id].name = profile.name
-        if profile.surname is not None:
-            profiles[id].surname = profile.surname
-        if profile.patronym is not None:
-            profiles[id].patronym = profile.patronym
-        if profile.email is not None:
-            profiles[id].email = profile.email
-        if profile.birthday is not None:
-            profiles[id].birthday = profile.birthday
-            profile.age = check_age(profile.birthday)
-        if profile.experience is not None:
-            profiles[id].experience = profile.experience
-        return profile
+def update_profile(id: UUID, profile: models.Profile):
+    if id in profiles.keys() and profile.id is not None:
+        profiles[id].login = profile.login
+        profiles[id].password = profile.password
+        profiles[id].name = profile.name
+        profiles[id].surname = profile.surname
+        profiles[id].patronym = profile.patronym
+        profiles[id].email = profile.email
+        profiles[id].birthday = profile.birthday
+        profiles[id].experience = profile.experience
+        return profiles[id]
     else:
         raise HTTPException(status_code=404, detail=f"User {id} not found")
 
 
 #PUT
 @app.put("/profile/{id}", response_model=models.Profile)
-def update_profile(id: int, profile: models.Profile):
-    if id <= len(profiles.keys()):
-        if profile.login is None or profile.password is None \
-            or profile.name is None or profile.surname is None \
-            or profile.patronym is None or profile.birthday is None \
-                or profile.email is None or profile.experience is None:
-            raise HTTPException(status_code=400, detail=f"Not enough information")
-        if profile.id is None:
-            profile.id = id
-        profile.age = check_age(profile.birthday)
-        profiles[str(id)] = profile
-        return profile
+def put_profile(id: UUID, profile: models.Profile):
+    if profile.id is None:
+        profile.id = uuid1()
+    elif id in profiles.keys():
+        profiles[id] = profile
+        return profiles[id]
     else:
         raise HTTPException(status_code=404, detail=f"User {id} not found")
 
 
 #DELETE
 @app.delete("/profile/{id}")
-def delete_profile(id: int):
-    if id <= len(profiles.keys()):
+def delete_profile(id: UUID):
+    if id in profiles.keys():
         profiles.pop(id)
-        return {"message": "Profile deleted successfully"}
+        return {"message": "Profile {id} deleted successfully"}
     else:
         raise HTTPException(status_code=404, detail=f"User {id} not found")
 
